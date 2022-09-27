@@ -229,21 +229,37 @@ bool substring(char* dest, const char* src, const size_t begin, const size_t end
     return true;
 }
 
-/*void stradd(char* dest, const char* src, const size_t index, const size_t dest_size)
+void stradd(char* dest, const char* src, const size_t index, const size_t dest_size)
 {
     if(dest_size < (strlen(dest) + strlen(src)) || index > dest_size)
     {
-        fprintf(stderr, "Error: stradd cannot fit \"%s\" into destination \"%s\" at index %ld with maximum size %ld.", src, dest, index, dest_size);
+        fprintf(stderr, "Error: stradd cannot fit \"%s\" into destination \"%s\" at index %zu with maximum size %zu.\n", src, dest, index, dest_size);
         return;
     }
-    
-    if(strlen)
-    
+
     const size_t dest_len = (strlen(src) + strlen(dest));
-    char* temp = (char*) malloc(dest_size * sizeof(char));
-    
-    
-}*/
+    char* end_temp = "\0", *temp = (char*) malloc(dest_len * sizeof(char));;
+
+    if(strlen(dest) < index) for(size_t i = 0; i < index; i++) *(dest + i) = ' ';
+    else if((index + 1) < strlen(dest))
+    {
+        end_temp = (char*) malloc((dest_len - index) * sizeof(char));
+        substring(end_temp, dest, (index + 1), strlen(dest), (dest_len - index));
+    }
+
+    substring(temp, dest, 0, strlen(dest), dest_size);
+    for(size_t i = index; i < dest_len; i++)
+    {
+        if((i - index) < strlen(src)) *(temp + i) = *(src + (i - index));
+        else *(temp + i) = *(end_temp + (i - (strlen(src) + index)));
+    }
+
+    snprintf(dest, dest_len, "%s", temp);
+
+    free(end_temp);
+    free(temp);
+}
+
 
 int_32 indexOf(const char* string, const char c, const size_t length)
 {

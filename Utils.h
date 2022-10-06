@@ -25,9 +25,8 @@ const size_t __CHAR_PTR_SIZE__ = (sizeof(char*));
     #define __64BIT__
 #endif
 
-#if !defined byte && !defined sbyte && !defined __8BIT__
-    typedef unsigned char byte;
-    typedef char sbyte;
+#ifndef byte
+    #define byte char
 #endif
 
 #if !defined uint_8_t && !defined uint_8 && defined uint
@@ -44,6 +43,9 @@ const size_t __CHAR_PTR_SIZE__ = (sizeof(char*));
         typedef ushort unsigned short;
     #endif
     typedef uchar unsigned char;
+    #ifndef __8BIT__
+        typedef ubyte unsigned byte;
+    #endif
 #endif
 
 #ifndef int_8_t
@@ -72,8 +74,8 @@ const size_t __CHAR_PTR_SIZE__ = (sizeof(char*));
         #endif
     #endif
     #ifndef __8BIT__
-        typedef byte uint_8_t;
-        typedef sbyte int_8_t;
+        typedef unsigned byte uint_8_t;
+        typedef byte int_8_t;
     #endif
 #endif
 
@@ -98,12 +100,11 @@ const size_t __CHAR_PTR_SIZE__ = (sizeof(char*));
     #define int_8 uint_8_t
 #endif
 
-#if !defined bool
+#ifndef bool
     #define true ((uint_8) 1)
     #define false ((uint_8) 0)
     
-    typedef uint_8 boolean;
-    #define bool boolean
+    typedef uint_8 bool;
 #endif
 
 #if !defined string && !defined String
@@ -113,7 +114,7 @@ const size_t __CHAR_PTR_SIZE__ = (sizeof(char*));
         size_t length;
     } String;
     
-    #define string(content) initString((char*) content)
+    #define string(content) initString(content)
     String* initString(const char* content)
     {
         String* strct = (String*) malloc(sizeof(String));
@@ -127,7 +128,7 @@ const size_t __CHAR_PTR_SIZE__ = (sizeof(char*));
         return strct;
     }
     
-    void strupdate(String str, const char* content)
+    void strset(String str, const char* content)
     {
         if(strlen(content) > str.length) str.content = (char*) realloc(str.content, strlen(content) * sizeof(char));
         else
@@ -156,6 +157,29 @@ const size_t __CHAR_PTR_SIZE__ = (sizeof(char*));
     size_t strlength(const String str) {return str.length;}
 #endif
 
+#ifdef __cplusplus
+}
+#endif
+
+typedef union
+{
+    float fl;
+    double d;
+    size_t st;
+    uint_128 ull;
+    int_128 ll;
+    uint_64 ul;
+    int_64 l;
+    uint_32 ui;
+    int_32 i;
+    uint_16 us;
+    int_16 s;
+    uint_8 ub;
+    int_8 b;
+    unsigned char uc;
+    char c;
+} debug_t;
+
 bool isBigEdian()
 {
     uint_128 a = INT_MAX, b = a;
@@ -165,78 +189,67 @@ bool isBigEdian()
     return (b > a);
 }
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-
 // ----------END_CRSS_TYPE_HEADER-----------
 
-// ----------LINUX_COMPAT_HEADER------------
-#ifndef LNXCMPT_H
-#define LNXCMPT_H
-
-#ifdef __cplusplus
-	#pragma once
-	extern "C"
-{
 #endif
 
-#ifdef _WIN32
-	#include <WinSock2.h>
-	#include <windows.h>
-
-	#define Sleep(s) sleep((int_32) ((s) * 1000))
-#else
-	#define LINUX
-
-	#include <sys/unistd.h>
-	#include <sys/socket.h>
-
-	#define malloc _malloca
-	#define realloc _realloca
-	#define calloc _calloca
-
-	#define Sleep sleep
+#ifndef _WIN32
+    #include <unistd.h>
+    #include <sys/socket.h>
+    #include <arpa/inet.h>
+    
+    #define Sleep sleep
     
     typedef int_32 Socket;
-#endif
-
-const size_t CHAR_PTR_SIZE = (sizeof(char*));
-
-#if CHAR_PTR_SIZE == 4
-	#define _32BIT
 #else
-	#define _64BIT
+    #include <windows.h>
+    #include <winsock2.h>
 #endif
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-
-// ------END_LINUX_COMPAT_HEADER------
 
 // ------------UTILS_HEADER-----------
 
-#ifndef STR_UTILS_H
-#define STR_UTILS_H
+#ifndef UTILS_H
+#define UTILS_H
 
 #ifdef __cplusplus 
 extern "C"
 {
 #endif
 
+#define strlen(string) (size_t) (strlen((string)) > 0 ? strlen((string)) + 1 : 0)
 
-bool isWhitespace(const char c) {return (c == ' ' || c == ' ');}
+#ifdef _WIN32 
+    #define sleep(s) Sleep((int_32) ((s) * 1000))
+#endif
+
+#define DEFAULT_SLEEP 0.05
+
+void wait(float ms)
+{
+    if(ms < 0)
+    {
+        fprintf(stderr, "Wait provided negative value: %f", ms);
+        ms *= -1;
+    }
+    
+    Sleep(ms);
+}
+
+bool isnumber(const char c) {return (c >= '0' && c <= '9');}
+
+bool isnumeric(const char* str, const size_t length)
+{
+    for(size_t i = 0; i < length; i++) if(!isnumber(*(str + i))) return false;
+    return true;
+}
+
+//bool isWhitespace(const char c) {return (c == '​' || c == ' ' || c == ' ' || c == ' ' || c == ' ' || c == ' ' || c == ' ' || c == ' ' || c == ' ' || c == ' ' || c == '⠀');}
 
 bool substring(char* dest, const char* src, const size_t begin, const size_t end, const size_t dest_size)
 {
     if(dest_size < ((end + 1) - begin) || begin >= end || end > strlen(src))
     {
-        fprintf(stderr, "Error: Substring could not extract index %zu to %zu of string \"%s\" into destination of provided size %zu.\n", begin, end, src, dest_size);
+        fprintf(stderr, "Error: Substring could not extract index %ld to %ld of string \"%s\" into destination of provided size %ld.\n", begin, end, src, dest_size);
         
         return false;
     }
@@ -246,38 +259,6 @@ bool substring(char* dest, const char* src, const size_t begin, const size_t end
     return true;
 }
 
-void stradd(char* dest, const char* src, const size_t index, const size_t dest_size)
-{
-    if(dest_size < (strlen(dest) + strlen(src)) || index > dest_size)
-    {
-        fprintf(stderr, "Error: stradd cannot fit \"%s\" into destination \"%s\" at index %zu with maximum size %zu.\n", src, dest, index, dest_size);
-        return;
-    }
-
-    const size_t dest_len = (strlen(src) + strlen(dest));
-    char* end_temp = (char*) "\0", *temp = (char*) malloc(dest_len * sizeof(char));;
-
-    if(strlen(dest) < index) for(size_t i = 0; i < index; i++) *(dest + i) = ' ';
-    else if((index + 1) < strlen(dest))
-    {
-        end_temp = (char*) malloc((dest_len - index) * sizeof(char));
-        substring(end_temp, dest, (index + 1), strlen(dest), (dest_len - index));
-    }
-
-    substring(temp, dest, 0, strlen(dest), dest_size);
-    for(size_t i = index; i < dest_len; i++)
-    {
-        if((i - index) < strlen(src)) *(temp + i) = *(src + (i - index));
-        else *(temp + i) = *(end_temp + (i - (strlen(src) + index)));
-    }
-
-    snprintf(dest, dest_len, "%s", temp);
-
-    free(end_temp);
-    free(temp);
-}
-
-
 int_32 indexOf(const char* string, const char c, const size_t length)
 {
     for(size_t i = 0; i < length; i++)
@@ -285,13 +266,13 @@ int_32 indexOf(const char* string, const char c, const size_t length)
         if(i > INT_MAX)
         {
             fprintf(stderr, "Error: indexOf overflow searching for \'%c\' in \"%s\".", c, string);
-            return (int_32) -1;
+            return -1;
         }
         
-        if(*(string + i) == c) return (int_32) i;
+        if(*(string + i) == c) return i;
     }
     
-    return (int_32) -1;
+    return -1;
 }
 
 int_32 lastIndexOf(const char* string, const char c, const size_t length)
@@ -300,20 +281,20 @@ int_32 lastIndexOf(const char* string, const char c, const size_t length)
     {
         fprintf(stderr, "Error: lastIndexOf overflow searching for \'%c\' in \"%s\".", c, string);
         
-        return (int_32) -1;
+        return -1;
     }
     
-    for(size_t i = length; i >= 0; i--) if(*(string + i) == c) return (int_32) i;
+    for(size_t i = length; i >= 0; i--) if(*(string + i) == c) return i;
     
-    return (int_32) -1;
+    return -1;
 }
 
 int_32 nextIndexOf(const char* string, const char c, const size_t index, const size_t length)
 {
     if(index >= length)
     {
-        fprintf(stderr, "Error: nextIndexOf index [%zu] is greater than or matches length %zu.\n", index, length);
-        return (int_32) -1;
+        fprintf(stderr, "Error: nextIndexOf index [%ld] is greater than or matches length %ld.\n", index, length);
+        return -1;
     }
     
     const size_t dest_len = (length - index);
@@ -322,7 +303,7 @@ int_32 nextIndexOf(const char* string, const char c, const size_t index, const s
     substring(temp, string, index, length, dest_len);
     int_32 next_index = indexOf(temp, c, dest_len);
     
-    if(next_index != -1) next_index += (int_32) index;
+    if(next_index != -1) next_index += index;
     
     free(temp);
     return next_index;
@@ -332,8 +313,8 @@ int_32 prevIndexOf(const char* string, const char c, const size_t index, const s
 {
     if(index >= length)
     {
-        fprintf(stderr, "Error: prevIndexOf index [%zu] is greater than or matches length %zu.\n", index, length);
-        return (int_32) -1;
+        fprintf(stderr, "Error: prevIndexOf index [%ld] is greater than or matches length %ld.\n", index, length);
+        return -1;
     }
     
     int_32 prev_index = lastIndexOf(string, c, index);
@@ -348,13 +329,13 @@ void strtoken(char* dest, const char* src, const char seperator, size_t* index, 
     const size_t src_len = strlen(src);
     if(*index >= src_len || *index < 0)
     {
-        fprintf(stderr, "Error: Index [%zu] is greater then source length of %zu.\n", *index, src_len);
+        fprintf(stderr, "Error: Index [%ld] is greater then source length of %ld.\n", *index, src_len);
         return;
     }
     
     if(*(src + *index) == seperator)
     {
-        fprintf(stderr, "Error: strtoken found seperator [%c] at index [%zu] in string \"%s\".", seperator, *index, src);
+        fprintf(stderr, "Error: strtoken found seperator [%c] at index [%ld] in string \"%s\".", seperator, *index, src);
         
         *index += 1;
         strtoken(dest, src, seperator, index, dest_size);
@@ -365,12 +346,12 @@ void strtoken(char* dest, const char* src, const char seperator, size_t* index, 
     
     int_32 end = nextIndexOf(src, seperator, *index, src_len);
     
-    if(end == (int_32) -1) substring(temp, src, *index, src_len, dest_size);
+    if(end == -1) substring(temp, src, *index, src_len, dest_size);
     else substring(temp, src, *index, end, dest_size);
     
     snprintf(dest, dest_size, "%s", temp);
     
-    if(end == (int_32) -1) *index = strlen(src);
+    if(end == -1) *index = strlen(src);
     else *index = ++end;
     free(temp);
 }
@@ -379,8 +360,8 @@ bool strfind(const char* string, const char* substring, int_32* begin, int_32* e
 {
     if((length < sub_len) || (length == 0))
     {
-        *begin = (int_32) -1;
-        *end = (int_32) -1;
+        *begin = -1;
+        *end = -1;
         
         return false;
     }
@@ -392,9 +373,9 @@ bool strfind(const char* string, const char* substring, int_32* begin, int_32* e
     {
         current = *(string + i);
         
-        if(*begin == (int_32) -1)
+        if(*begin == -1)
         {
-            if(*(string + i) == *(substring)) *begin = (int_32) i;
+            if(*(string + i) == *(substring)) *begin = i;
             continue;
         }
         
@@ -402,12 +383,12 @@ bool strfind(const char* string, const char* substring, int_32* begin, int_32* e
         
         if(sub_cur != current)
         {
-            *begin = (int_32) -1;
+            *begin = -1;
             continue;
         }
         else if((*begin - i) >= sub_len)
         {
-            *end = (int_32) (i + 1);
+            *end = (i + 1);
             break;
         }
     }
@@ -415,11 +396,24 @@ bool strfind(const char* string, const char* substring, int_32* begin, int_32* e
     return (*begin >= 0 && *end >= 1);
 }
 
-bool strdel(char* dest, const char* src, const size_t begin, const size_t end, const size_t length)
+bool strDel(char* dest, const char* src, const size_t index, const size_t dest_size, const size_t src_len)
+{
+    char* temp = (char*) malloc(src_len * sizeof(char));
+    
+    substring(temp, src, 0, index, src_len);
+    substring((temp + index), src, (index + 1), src_len, src_len);
+    
+    snprintf(dest, (src_len * sizeof(char)), "%s", temp);
+    
+    free(temp);
+    return true;
+}
+
+bool strDelMid(char* dest, const char* src, const size_t begin, const size_t end, const size_t length)
 {
     if(begin >= end || end > length)
     {
-        fprintf(stderr, "Error: strdel could not remove substring index %zu to %zu from \"%s\".\n", begin, end, src);
+        fprintf(stderr, "Error: strdel could not remove substring index %ld to %ld from \"%s\".\n", begin, end, src);
         
         return false;
     }
@@ -510,7 +504,7 @@ bool strInsert(char* dest, const char* src, const char ch, const size_t index, c
 
 bool escapeStrPrcnts(char* dest, const char* src, const size_t dest_size, const size_t src_len)
 {
-    const size_t percents = countChars(src, '%', src_len);
+    const size_t percents = countChars(src, '\%', src_len);
 
     if((dest_size + percents) < src_len)
     {
@@ -518,7 +512,7 @@ bool escapeStrPrcnts(char* dest, const char* src, const size_t dest_size, const 
         
         return false;
     }
-    size_t index = indexOf(src, '%', src_len);
+    size_t index = indexOf(src, '\%', src_len);
     
     char* temp = (char*) malloc((src_len + percents) * sizeof(char));
     snprintf(temp, src_len, "%s", src);
@@ -531,9 +525,9 @@ bool escapeStrPrcnts(char* dest, const char* src, const size_t dest_size, const 
             continue;
         }
         
-        strInsert(temp, temp, '\\', index, (src_len + percents), strlen(temp));
+        strInsert(temp, temp, index, '\\', (src_len + percents), strlen(temp));
         
-        index = nextIndexOf(temp, '%', (index + 1), strlen(temp));
+        index = nextIndexOf(temp, '\%', (index + 1), strlen(temp));
     }
     
     snprintf(dest, strlen(temp), "%s", temp);
@@ -645,6 +639,61 @@ size_t compressedStrlen(const cmp_char* str, const size_t length)
     return size;
 }
 
+// NEW ADDITIONS
+
+bool strRMChar(char* dest, const char* src, const char c, const size_t dest_size, const size_t src_len)
+{
+    char* temp = (char*) malloc(src_len * sizeof(char));
+    snprintf(temp, (src_len * sizeof(char)), "%s", src);
+    
+    size_t index = indexOf(temp, c, strlen(temp));
+    
+    while(index != -1)
+    {
+        strDel(temp, temp, index, (src_len * sizeof(char)), strlen(temp));
+        index = indexOf(temp, c, strlen(temp));
+    }
+    
+    snprintf(dest, (strlen(temp) * sizeof(char)), "%s", temp);
+    
+    free(temp);
+    return true;
+}
+
+bool strAdd(char* dest, const char* src, const char c, const size_t index, const size_t dest_size, const size_t src_len)
+{
+    if(dest_size < index)
+    {
+        fprintf(stderr, "Error: strAdd cannot insert character %c into destination string \"%s\" of length %zu at index %zu in destination array of size %zu.\n", c, src, src_len, index, dest_size);
+        
+        return false;
+    }
+
+    char* temp = (char*) malloc(src_len * sizeof(char));
+    
+    if(!substring(temp, src, 0, index + 1, strlen(src)))
+    {
+        fprintf(stderr, "Error: strAdd - substring failed on string \"%s\" of length %zu between index %zu and %zu\n", src, src_len, ((size_t) 0), (index + 1));
+        
+        free(temp);
+        return false;
+    }
+    *(temp + (index + 1)) = c;
+    if(!substring(((temp + index) + 2), src, (index + 1), strlen(src), (strlen(src) + 1)))
+    {
+        fprintf(stderr, "Error: strAdd - substring failed on string \"%s\" of length %zu between index %zu and %zu\n", src, src_len, (index + 1), src_len);
+        
+        free(temp);
+        return false;
+    }
+    
+    snprintf(dest, ((src_len * sizeof(char)) + 1), "%s", temp);
+    
+    free(temp);
+    return true;
+}
+
+
 #ifdef __cplusplus 
 }
 #endif
@@ -681,34 +730,34 @@ char* file_ext[FILE_TYPES] =
 
 #define MAX_DIS_CHARS 9 
 
-char disallowed_chars[] = {':', '*', 	'?', 	'"', 	'<', 	'>', 	'|'}; 
+char disallowed_chars[] = {':', '*',     '?', '"', '<', '>', '|'}; 
 
-#ifdef _WIN32
+#ifdef __WIN32
 
 #define MAX_DIS_NAMES 24 
-char disallowed_names[MAX_DIS_NAMES][5] = 
-{ 	
+char disallowed_names[MAX_DIS_NAMES][] = 
+{     
     "CON", 
     "PRN", 
     "AUX", 
     "NUL", 
-    "COM1", 	
-    "COM2", 	
+    "COM1",     
+    "COM2",     
     "COM3", 
     "COM4", 
     "COM5", 
     "COM6", 
     "COM7", 
-    "COM8", 	
+    "COM8",     
     "COM9",
     "COM0",
-    "LPT1", 	
+    "LPT1",     
     "LPT2", 
     "LPT3", 
     "LPT4", 
     "LPT5", 
-    "LPT6", 	
-    "LPT7", 	
+    "LPT6",     
+    "LPT7",     
     "LPT8", 
     "LPT9", 
     "LPT0" 
@@ -722,7 +771,7 @@ extern "C"
 #endif
 
 bool doesStrContainDisallowedChars(const char* string) 
-{ 	
+{     
     for(size_t i = 0; i <= MAX_DIS_CHARS; i++) if(strContainsChar(string, disallowed_chars[i], strlen(string))) return true;
     
     return false; 
@@ -733,11 +782,10 @@ bool isValidWinFileName(const char* string)
 #ifdef _WIN32
     if(doesStrContainDisallowedChars(string)) return false;
     
-    size_t length = 0;
     for(size_t i = 0; i < MAX_DIS_NAMES; i++)
     {
         length = strlen(disallowed_names[i]);
-        if(strMatch(string, disallowed_names[i], strlen(string), strlen(disallowed_names[i]))) return false;
+        if(strmatch(string, disallowed_names[i], strlen(string), strlen(disallowed_names[i]))) return false;
     }
 #endif
     return true; 
@@ -788,7 +836,7 @@ bool isValidFileName(const char* string, const size_t length)
 bool isValidFileType(const ftype type) {return (type < 0 || type > FILE_TYPES);}
 
 char* getFileTypeExtension(const ftype type) {
-    if(!isValidFileType(type)) return (char*) "\0";
+    if(!isValidFileType(type)) return "";
     return file_ext[type];
 }
 
@@ -830,7 +878,7 @@ file* initFile(const char* path, const char* name, const ftype type, const size_
     snprintf(f_name, length, "%s/%s%s", path, name, xtnsn);
     
     FILE* f = NULL;
-    fopen_s(&f, f_name, "r");
+    f = fopen(f_name, "R");
     
     if(f == NULL)
     {
@@ -881,7 +929,7 @@ bool FOpen(file* f, const char* mode)
         return false;
     }
     
-    freopen_s(&f->file,  f->path, mode, f->file);
+    f->file = freopen(f->path, mode, f->file);
     
     if(f->file == NULL)
     {
@@ -1019,17 +1067,7 @@ int main()
     char* str = (char*) malloc(TEST_SIZE * sizeof(char));
     snprintf(str, TEST_SIZE, "wwweeerrrrr");
     
-    printf("Size before compression: %zu\n", strlen(str));
-    
-    compressText(str, str, (TEST_SIZE), strlen(str));
-    
-    printf("Size after compression: %zu\n", strlen(str));
-    printf("Original size: %zu\n", cmp_strlen(str));
-    
-    expandCompressedText(str, str, TEST_SIZE, strlen(str));
-    
-    printf("Expanded:\n");
-    for(size_t i = 0; i < strlen(str); i++) printf("Index #%zu: \'%c\'[%d].\n", i, *(str + i), (int_32) *(str + i));
+    strInsert(str, str, 'a', 5, TEST_SIZE, strlen(str));
     
     printf("%s", str);
     return 0;
